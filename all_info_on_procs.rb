@@ -2,9 +2,22 @@
 # Blocks are chunks of code that can't be stored as a variable - blocks are method syntax, are't objects, can't stand alone.
 # Blocks are a rare execption in ruby where the common idea is 'everything is an object' (b/c blocks aren't objects)
 # Blocks are just syntax of a method call. You can wrap a block into an object, when this happens it's called a Proc/Lambda.
+# Blocks that are empty are "", NOT nil.
 # A built in Ruby class called "Proc" holds these blocks that are turned into objects.
 # Procs/Lambdas are blocks that have been 'confined' into a variable or object and can be passed/used like an object. 
- 
+
+################# Side note ########
+# The & operator can also be supplemented with the "gem install ampex" which allows a &X syntax to use the & shortcut in more 
+# situations such as - "alpha\nbeta\ngamma\n".lines.map(&X.strip.upcase)"  will print every word in uppercase.
+# Many people don't tend to like the &X though. This usage of the & is different than the & that converts blocks to procs!
+####################################
+# Side notes: 
+# In older Ruby versions there was a keyword 'proc' that behaved differently than 'Proc.new', but they are now alaised. 
+# Therefore the 'proc' keyword won't be discussed. 
+# Speed wise, blocks are faster than lambdas. 
+# The assignment of a method to a variable executes that method. Ruby reads from right to left. 
+####################################
+
 # Lambdas:                                            Procs: 
 # used with blocks                                    used with blocks
 # are anonymous functions (no need for a name)        Not anonymous 
@@ -16,13 +29,10 @@
 # "Return" runs code right after 'return'             "Return" runs code in the next line after 'return'
 # Object ID shows a Proc class w/ "Lambda"            Object ID shows a Proc class w/o "Lambda"
 
-# Side notes: 
-# In older Ruby versions there was a keyword 'proc' that behaved differently than 'Proc.new', but they are now alaised. 
-# Therefore the 'proc' keyword won't be discussed. 
-# Speed wise, blocks are faster than lambdas. 
 
 ############### EVERYTHING WITH A CALL IN IT 
-def feeding_procs(suitcase)
+
+def feeding_procs(suitcase)  # doesn't need the & preceding suitcase. It's already a Proc.
       puts suitcase   # <#Proc ... >
       suitcase.call   # "YEHAW!"  The lambda just came in via 'suitcase' toting it's block with it that can be called at any time.
 end
@@ -31,6 +41,16 @@ feeding_procs(lambda {puts "YEHAW!"})
 
 #### Understanding the methods .call and .yield.  #############
 # The .call is a Method method (Eg. a type of method held in the class of Method)
+# If a block just invokes .call after it, the block will run. If .call has a parameter like .call(5), then the 5 will pass to the
+# block via the ||'s. Call is always invoked by a closure (proc/block/lambda). It doens't matter if the .call is attached to a 
+# method/variable, as long as that method returns a block, or the variable is a Proc/Lambda. 
+
+# Confirming thoughts: If you see a .call parameter, the block invoking it should be have ||'s to receive it. 
+# If it's a lambda, the parameters of the call must match the vars passed into the block. 
+# Eg lambda {|x,y| x+y}.call(4,3)   VS  Proc.new { puts "hi" }.call("A parameter lost into the void")
+# Eg lambda {|x  | x  }.call(4,3) <-- Error, wrong number of Arguments 2 for 1.
+# The parameter for .call can NOT have a space after it. Incorrect -> {}.call (4)  
+
 # There are 94 methods in the Methods total (proof: p Method.methods.count). 
 # Other notable methods in the class Method are: .to_proc , .inspect , .eql? 
 # Every Object has a method called .method. 
@@ -75,15 +95,15 @@ end
 say = Sayit.new
 say.method(:hi).call    # wazzup
 
-##### Procs preserve variable state
+##### Procs/Lambdas preserve variable state
 
 def whatever
   z = 0 
-  return Proc.new { z += 1 }
+  Proc.new { z += 1 }  
+  # lambda { z += 1 }  would run identically to the Proc.new in this example.
 end
 
-a = whatever   # This whatever will be different from other variables assigned to 'whatever', it's almost 
-               # as if a separate instance is created of the proc.
+a = whatever   # This whatever will be different from other variables assigned to 'whatever'
 p a.call # 1
 p a.call # 2
 
@@ -100,8 +120,11 @@ lambda { |&block| block.call }.call { 1 }
 
 ##########
 
+########## EXAMPLES OF ALREADY EXPLAINED CONCEPTS #######################
+
 b = lambda { "Hi" }
-puts b.call   # Hi. Just goes to the var 'b' and will .call the block to be run. 
+puts lambda { "Hi" }.call # Hi. Equivalent to line below.
+puts b.call               # Hi. Just goes to the var 'b' and will .call the block to be run. 
 
 ##########
 
@@ -112,50 +135,45 @@ wat = lambda do |x|   # The 'x' is getting the param given by the .call method.
     "Not kitteh" 
   end
 end
-puts wat.call("cat")     # Kietteh. .call takes "cat" and takes it to 'wat', which has a lambda which wants a variable for |x| which
-                         # is given 'cat' and then the block just executes. 
-
+puts wat.call("cat")     # Kietteh. .call takes "cat", gives to 'wat', a lambda that wants 1 var for |x|, then x = "cat"
 puts wat.call("meowz!")  # Not Kitteh
 
 ##########
 
-# Use a lambda to do something with the block
 doit = lambda { |x| x+1 }
 p doit.call(5)   # 6. The .call requires a block to be assoicated with doit, which it is. It then passes in the '5' arg to the 'x' 
+
+##########
 
 cows = lambda { 10 } 
 # p cows.call(10)      # Error. Wrong number of args, (1 for 0)
 p cows.call            # 10. 0 args for call passed into a lambda block w/ 0 args needed. 
 
+##########
+
 rats = lambda { |x, y| x + y }
-# p rats.call (5,4) # Error, expecting ')'   Remember no spaces after the '.call' method
-p rats.call(5,4)   # 9 
 # p rats.call(5,4,3) # Wrong number of args - 3 for 2.
+p rats.call(5,4)   # 9 
 
+########## Lambdas always return the last expression in a block.
 
-# Lambdas always return the last expression in a block.
 b = lambda do
   5
   6
 end
 p b.call
 
+##########
+
 def gen_times(factor)
-    Proc.new { |n| n*factor }
+    Proc.new { |n| n*factor }    # Would work identically if I subbed "Proc.new" w/ "lambda"
 end
 
 p gen_times(3).call(12)                         #=> 36
 p gen_times(5).call(5)                          #=> 25
 p gen_times(3).call(gen_times(5).call(4))       #=> 60
 
-######################## Blocks return the last line by default, just like methods. #####################
-block = lambda do
-  123
-  456
-end
-p "Last line: #{block.call}"    # If the block was empty, it returns "" NOT nil. 
-#########################################################################################################
-
+#####################
 
 
 
@@ -178,9 +196,8 @@ p "Last line: #{block.call}"    # If the block was empty, it returns "" NOT nil.
 
 ################## THE & 
 
-
 class Array
-  def iterate!(&code)          # The & casts code .to_proc
+  def iterate!(&code)          # The & casts 'code' .to_proc
 # def iterate!(code)           # There's no &, meaning code better be coming in as a proc already.   
     self.each_with_index do |n, i|
       self[i] = code.call(n)
@@ -197,27 +214,30 @@ end #)
 
 p array
 
-################# Side note ########
-# The & operator can also be supplemented with the "gem install ampex" which allows a &X syntax to use the & shortcut in more 
-# situations such as - "alpha\nbeta\ngamma\n".lines.map(&X.strip.upcase)"  will print every word in uppercase.
-# Many people don't tend to like the &X though. This usage of the & is different than the & that converts blocks to procs!
-####################################
-
 
 ######### Blocks take arguments ####################
+# The behavior of .call here is not anything new. It still passes parameters into the block, and .call itself simply invokes
+# the block itself. The ONLY difference here is that instead of seeing a Proc.new{} or lambda {} or just a plain block {} 
+# passed into .call we're simply seeing the &, which means "Whomever called this method should have a block attached to it, 
+# but I know blocks can't just be passed around and named, so I'm using the & to mean .to_proc on whatever name is coming in."
+
 def gimme_moar_numbahz(&block)
-  block.call(10)            # When .call has a parameter, it gets passed to the block via the |x|
+  p block.class             # Proc 
+  p block                   # #<Proc:0x007fa6bd15fc00@/Users/tony/mastery-notes/mastery_blocks_ampex.rb:63>
+  p Proc.new {}             # #<Proc:0x007fa6bd15fc00@/Users/tony/mastery-notes/mastery_blocks_ampex.rb:123>
+  p lambda {}               # #<Proc:0x007fa6bd15fc00@/Users/tony/mastery-notes/mastery_blocks_ampex.rb:63 (lambda)>
+  block.call(10)            # Same as seen before - when .call has a parameter, it gets passed to the block via the |x|
   block.call(100)           # This says, give me the proc named block and run it's block contents and pass in 100 via |x|
-  block.call(1000)
 end
 blocks_can_see_me = 5       # Remember blocks can see their environment/scope around them. 
 gimme_moar_numbahz { |x| puts x + 1 + blocks_can_see_me }
 
-def get_block(&block)
-  puts block.class # Proc 
+######### 
+
+def get_block(&block) # Only ONE block can be passed into an arg list like here - to add more you need procs (discuss later)
   block.call       # CATS
-  yield 
-  block 
+  yield            # CATS - Yield basically does the same thing as call in this case. Yield can't handle params like .call.
+  block            # Does nothing here, but in case a .call method calls get_block, the last line will be this block. 
   # puts "hi"      # This would cause the block.call below to error b/c the last line isn't the block it wants for .call. 
 end
 
@@ -225,60 +245,33 @@ block1 = get_block { puts 'CATS' }
 puts block1.class # Proc 
 block1.call       # CATS - When you .call a method that takes in a block, the LAST line must be that block to be returned for .call.
 
+#########
 
-def get_blox(&blox) # Only ONE block can be passed into an argument list like shown here, to add more, you need procs (discuss later)
-  p "here"         # This method is called from the assignement of the var 'blok1' and prints 'here'
-  p blox           # #<Proc:0x007fa6bd15fc00@/Users/tonydinitto/Documents/Ruby Programs/mastery-notes/mastery_blocks_ampex.rb:63>
+def get_blox(&hi)
+  hi
 end
 
 blok1 = get_blox{ p "cell block 1"} # This line runs, but DOESN'T execute the block yet. It's just passed to &blox in get_blox.
-p blok1.class   # Proc
 blok1.call      # "cell block 1" is now displayed when you .call the method it runs the block. 
 
-p Proc.new {}   # Identical to below (except this line doesn't have (lambda) appended)
-
-
-# Blocks can take arguments
-def z(&blob)
-  blob.call(10)
-  blob.call(50)
-end
-z { |x| p x + 1}  # 11. 51. The z method is called, gives &blob a block, when blob is .call(ed) with the arg of 10, it spits it back to
-                  # expression that called the method and returns '10' for x and puts 11.
-
-def g(&p)
-  p.call(10)
-end
-# z g   # Undefined method .call for 'nil'  This is because there's no block, and the (&p) in method 'g' is looking for a block. 
-
-
-
-def addz(&block)
-  puts block.call(5)
-  puts "hi"
-  puts block.call(10)
-end
-var = 2 
-addz { |x| var + x + 3}  # 10. hi. 15. The addz method gets the block and puts 5 into the |x| and runs the block and then
-                         # continues through the addz method, displaying "hi", and then running a block again when it sees the
-                         # .call method call it. 
-
-values = [1,2,3,4]
-p total = values.inject(0) { |sum, element| sum + element }  # 10
-p total = values.inject(0,&:+)  # This line is the equivalent of the one above. 
-
+######### Symbols and methods can turn into blocks by being casted with the &, like in the common .inject method below
 # When you use & (ampersand) in front of the last variable in a method call, that means what's passed shouldn't be treated
 # like a regular object, but instead treat it like more code, which will be a block (termed as a 'proc')
 # Since a symbol isn't a proc, you can convert it to one with the .to_proc method.
-
 # The & operator will "cast" any operator to a block. Works on procs, methods, symbols. 
-# Here are two equivalent lines. 
+
+values  = [1,2,3,4]
+p total = values.inject(0) { |sum, element| sum + element }  # 10
+p total = values.inject(0,&:+)  # This line is the equivalent of the one above. 
+
+######### Another example
 
 p [1,2].map { |x| x.to_s }  # Here's a normal line converting everything in the array to a String.
 p [1,2].map(&:to_s) # Here's the same line. Notice this is a PARAMETER for .map, as opposed to a block. So ()'s are used. Not {}.
 
-# Why do this? Because...
-# using the & operator on Enums reduces temp vars (no 'x' needed) and also puncutation (no need for the |x| and x. part of the block)
+# Using the & operator on Enums reduces temp vars (no 'x' needed) and also puncutation (no need for the |x| and x. part of the block)
+
+#########
 
 # The & operator just calls .to_proc 
 # 2 other equivalent ways fo doing the exact thing:
@@ -289,9 +282,7 @@ p [1,2].map(&yao)            # You can put in a var (like yao)
 p [1,2].map(&:to_s.to_proc)  # Without the var. 
 p [1,2].map(&:to_s)          # [1,2] - Without the var. 
 
-# Earlier discussed was that you can only have one block passed into a method's parameters (part2) 
-# You don't always need to create a proc explicitly w/ the Proc.new, as Proc is 'born' from a block the
-# moment it gets passed around like an object.
+# You can only have one block passed into a method's parameters. 
 
 def get_blox(&blox) 
   p "here"         
